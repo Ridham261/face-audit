@@ -68,7 +68,7 @@ jobs:
         run: |
           $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\run_test_fast.py
+          & $py D:\audit\run_test_fast.py --workers 1
 
       - name: Assert accuracy threshold (≥ 85%)
         run: |
