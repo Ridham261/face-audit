@@ -1,0 +1,5 @@
+outs:
+- md5: e9344aea5d0574ad40526233874ce94c
+  size: 10036255
+  hash: md5
+  path: features_all.npz

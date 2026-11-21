@@ -1,0 +1,5 @@
+outs:
+- md5: a97befd5811e96851e0996c0baf2b6ae
+  size: 2355296767
+  hash: md5
+  path: best_convnext_large.pth

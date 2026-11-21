@@ -1,0 +1,5 @@
+outs:
+- md5: c16a0bb76eb6b0770f1cce1861ec617d
+  size: 5974340
+  hash: md5
+  path: cnx.npz

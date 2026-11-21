@@ -1,0 +1,5 @@
+outs:
+- md5: 54fb09c1514064d06c02f149b99ef92a
+  size: 6466467
+  hash: md5
+  path: goggles_model.pt

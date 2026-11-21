@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Models — tracked by DVC, not git
+models/best_convnext_large.pth
+models/appearance_model.pt
+models/goggles_model.pt
+models/yolov8m-oiv7.pt
+models/clip/
+models/face_parsing/
+models/models/
+
+# Dataset — tracked by DVC, not git
+dataset/test/
+dataset/train/
+dataset/*.npz
+dataset/*.zip
+
+# Training annotations — tracked by DVC
+training/goggles_annotations/
+training/specs_annotations/
+training/yolo_glasses_dataset/
+training/runs/
+
+# Outputs
+results/
+detection_outputs/
+monitoring/predictions.db
+
+# MLflow database
+mlflow.db
+
+# DVC cache
+.dvc/cache/
+.dvc/tmp/
+
+# Misc
+*.log
+.DS_Store
