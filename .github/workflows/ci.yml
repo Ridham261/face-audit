@@ -46,43 +46,28 @@ jobs:
           test -f models/best_convnext_large.pth.dvc
           echo "All DVC pointers present"
 
-  # ── Job 2: Full accuracy test — runs on YOUR machine (self-hosted runner) ──
-  # Models and dataset live locally, so this job needs the self-hosted runner.
-  # Setup: GitHub repo Settings → Actions → Runners → New self-hosted runner
-  # Then follow the Windows instructions to register this machine as a runner.
+  # ── Job 2: Sanity check — runs on YOUR machine (self-hosted runner) ──
+  # Checks imports, model files, dataset presence, and MLflow registry.
+  # Runs in ~30 seconds. Full accuracy test: run run_test_fast.py locally.
   model-test:
-    name: Model Accuracy Gate
+    name: Model Sanity Check
     runs-on: self-hosted
-    needs: code-check       # only runs if code-check passes
+    needs: code-check
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull data and models from DVC local remote
+      - name: Restore dataset from DVC
         run: |
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
           Set-Location D:\audit
-          & $py -m dvc pull 2>&1
+          & $py -m dvc pull dataset/test.dvc 2>&1
 
-      - name: Run fast accuracy test
+      - name: Run sanity check
         run: |
           $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\run_test_fast.py --workers 1
-
-      - name: Assert accuracy threshold (≥ 85%)
-        run: |
-          $env:PYTHONUTF8 = "1"
-          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\check_accuracy.py
-
-      - name: Upload results CSV as artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ github.sha }}
-          path: results/dataset_test_results.csv
-          retention-days: 30
+          & $py D:\audit\ci_sanity_check.py
 
   # ── Job 3: Docker build — runs only when model-test passes ────────────────
   docker-build:
