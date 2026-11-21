@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 HERE     = os.path.dirname(os.path.abspath(__file__))
 TEST_ROOT = os.path.join(HERE, "dataset", "test")
 EXTS     = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-PER_CAT  = 5
+PER_CAT  = 1
 
 APP_LABELS   = ["black_hair","specs_black_hair","white_hair","specs_white_hair",
                 "doctor_cap","doctor_cap_specs","turban","turban_specs"]
