@@ -61,6 +61,7 @@ jobs:
       - name: Pull data and models from DVC local remote
         run: |
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          Set-Location D:\audit
           & $py -m dvc pull 2>&1
 
       - name: Run fast accuracy test
