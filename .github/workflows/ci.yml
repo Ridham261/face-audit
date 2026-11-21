@@ -71,16 +71,7 @@ jobs:
       - name: Assert accuracy threshold (≥ 85%)
         run: |
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py -c @'
-          import pandas as pd, sys
-          df = pd.read_csv(r"D:\audit\results\dataset_test_results.csv")
-          accuracy = df["is_valid"].mean()
-          print(f"Accuracy: {accuracy:.1%}  ({int(df['is_valid'].sum())}/{len(df)})")
-          if accuracy < 0.85:
-              print(f"FAIL: accuracy {accuracy:.1%} is below 85% threshold")
-              sys.exit(1)
-          print("PASS: accuracy meets threshold")
-          '@
+          & $py D:\audit\check_accuracy.py
 
       - name: Upload results CSV as artifact
         uses: actions/upload-artifact@v4

@@ -37,13 +37,7 @@ jobs:
       - name: Check if model was promoted
         run: |
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py -c @'
-          import mlflow
-          from mlflow.tracking import MlflowClient
-          client = MlflowClient(tracking_uri="sqlite:///D:/audit/mlflow.db")
-          mv = client.get_model_version_by_alias("GogglesDetector", "production")
-          print(f"Production model: GogglesDetector v{mv.version}")
-          '@
+          & $py D:\audit\check_promotion.py
 
       - name: Commit updated DVC pointer if model improved
         run: |
