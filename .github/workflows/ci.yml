@@ -65,11 +65,13 @@ jobs:
 
       - name: Run fast accuracy test
         run: |
+          $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
           & $py D:\audit\run_test_fast.py
 
       - name: Assert accuracy threshold (≥ 85%)
         run: |
+          $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
           & $py D:\audit\check_accuracy.py
 
