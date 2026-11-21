@@ -1,0 +1,38 @@
+# keep image small — models and data are mounted as volumes at runtime
+
+# large model weights (mounted via volume)
+models/
+
+# dataset
+dataset/
+
+# training artifacts
+training/runs/
+training/goggles_annotations/
+training/specs_annotations/
+training/yolo_glasses_dataset/
+
+# DVC
+.dvc/cache/
+.dvc/tmp/
+
+# MLflow artifacts (mounted via volume)
+mlruns/
+mlflow.db
+
+# results and monitoring db
+results/
+detection_outputs/
+monitoring/predictions.db
+
+# git
+.git/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# misc
+*.log
+.DS_Store

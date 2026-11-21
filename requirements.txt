@@ -1,0 +1,21 @@
+# Face Audit System — Python dependencies
+# Pinned to exact versions from face-validation conda env
+
+ultralytics==8.4.191
+torch==2.2.2
+torchvision==0.17.2
+onnxruntime==1.32.0
+insightface==2.1
+mediapipe==0.10.21
+facenet-pytorch==2.6.0
+deepface==0.0.103
+fastapi==0.162.0
+uvicorn==0.54.0
+opencv-python==4.11.0.86
+Pillow==10.2.0
+numpy==1.26.4
+aiohttp==3.14.5
+pandas==2.2.3
+mlflow==3.18.0
+requests
+python-multipart

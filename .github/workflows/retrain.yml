@@ -1,0 +1,70 @@
+name: Retrain + Promote
+
+# Trigger manually from GitHub Actions UI, or on a schedule (every Sunday 2am)
+on:
+  workflow_dispatch:
+    inputs:
+      promote_threshold:
+        description: "mAP50 threshold to promote to Production (e.g. 0.90)"
+        required: false
+        default: "0.90"
+  schedule:
+    - cron: "0 2 * * 0"   # every Sunday at 02:00 UTC
+
+jobs:
+  retrain:
+    name: Retrain GogglesDetector
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull latest data from DVC remote
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py -m dvc pull training/goggles_annotations training/yolo_glasses_dataset
+
+      - name: Run training (logs to MLflow + registers model)
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py D:\audit\training\run_train.py
+
+      - name: Run accuracy test on new model
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py D:\audit\run_test_fast.py
+
+      - name: Check if model was promoted
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py -c @'
+          import mlflow
+          from mlflow.tracking import MlflowClient
+          client = MlflowClient(tracking_uri="sqlite:///D:/audit/mlflow.db")
+          mv = client.get_model_version_by_alias("GogglesDetector", "production")
+          print(f"Production model: GogglesDetector v{mv.version}")
+          '@
+
+      - name: Commit updated DVC pointer if model improved
+        run: |
+          cd D:\audit
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py -m dvc add models/goggles_model.pt
+          git add models/goggles_model.pt.dvc
+          $changed = git diff --cached --name-only
+          if ($changed) {
+            git commit -m "chore: update goggles model pointer after retrain [skip ci]"
+            git push
+            & $py -m dvc push
+            Write-Host "New model pointer committed and pushed"
+          } else {
+            Write-Host "No model change — skipping commit"
+          }
+
+      - name: Upload training results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: retrain-results-${{ github.run_id }}
+          path: results/dataset_test_results.csv
+          retention-days: 90

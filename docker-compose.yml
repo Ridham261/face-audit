@@ -1,0 +1,61 @@
+services:
+
+  # ── Goggles Wrapper API ───────────────────────────────────────────────────
+  goggles-api:
+    build: .
+    container_name: face-audit-goggles
+    ports:
+      - "8000:8000"
+    volumes:
+      # mount models read-only — never baked into the image
+      - ./models:/app/models:ro
+      # mount mlflow db so registry lookups work inside container
+      - ./mlflow.db:/app/mlflow.db:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+
+  # ── MLflow Tracking + Registry UI ────────────────────────────────────────
+  mlflow-server:
+    image: ghcr.io/mlflow/mlflow:v2.14.3
+    container_name: face-audit-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      # share the same SQLite db the scripts write to
+      - ./mlflow.db:/mlflow/mlflow.db
+      # share artifact storage
+      - ./mlruns:/mlflow/mlruns
+    command: >
+      mlflow server
+        --backend-store-uri sqlite:////mlflow/mlflow.db
+        --default-artifact-root /mlflow/mlruns
+        --host 0.0.0.0
+        --port 5000
+    restart: unless-stopped
+
+  # ── Monitoring sidecar — runs drift check on schedule ────────────────────
+  monitor:
+    build: .
+    container_name: face-audit-monitor
+    volumes:
+      - ./monitoring:/app/monitoring
+      - ./results:/app/results:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    # runs check_drift.py every hour, stays alive between runs
+    command: >
+      sh -c "while true; do
+        python monitoring/check_drift.py 2>&1 | tee -a monitoring/drift.log;
+        sleep 3600;
+      done"
+    depends_on:
+      - goggles-api
+    restart: unless-stopped

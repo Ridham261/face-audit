@@ -1,0 +1,123 @@
+name: Face Audit CI
+
+# Runs on every push and pull request to main
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+
+  # ── Job 1: Code quality — runs on GitHub cloud (no models needed) ──────────
+  code-check:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install lightweight deps (no torch/cv2)
+        run: pip install mlflow dvc pandas
+
+      - name: Syntax check — all Python files
+        run: |
+          python -m py_compile run_test.py
+          python -m py_compile run_test_fast.py
+          python -m py_compile run_test_api.py
+          python -m py_compile goggles_wrapper_api.py
+          python -m py_compile register_models.py
+          python -m py_compile training/run_train.py
+          echo "All files parse OK"
+
+      - name: Check DVC config is valid
+        run: dvc config --list
+
+      - name: Check .dvc pointer files exist
+        run: |
+          test -f dataset/test.dvc
+          test -f models/goggles_model.pt.dvc
+          test -f models/best_convnext_large.pth.dvc
+          echo "All DVC pointers present"
+
+  # ── Job 2: Full accuracy test — runs on YOUR machine (self-hosted runner) ──
+  # Models and dataset live locally, so this job needs the self-hosted runner.
+  # Setup: GitHub repo Settings → Actions → Runners → New self-hosted runner
+  # Then follow the Windows instructions to register this machine as a runner.
+  model-test:
+    name: Model Accuracy Gate
+    runs-on: self-hosted
+    needs: code-check       # only runs if code-check passes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull data and models from DVC local remote
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py -m dvc pull 2>&1
+
+      - name: Run fast accuracy test
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py D:\audit\run_test_fast.py
+
+      - name: Assert accuracy threshold (≥ 85%)
+        run: |
+          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          & $py -c @'
+          import pandas as pd, sys
+          df = pd.read_csv(r"D:\audit\results\dataset_test_results.csv")
+          accuracy = df["is_valid"].mean()
+          print(f"Accuracy: {accuracy:.1%}  ({int(df['is_valid'].sum())}/{len(df)})")
+          if accuracy < 0.85:
+              print(f"FAIL: accuracy {accuracy:.1%} is below 85% threshold")
+              sys.exit(1)
+          print("PASS: accuracy meets threshold")
+          '@
+
+      - name: Upload results CSV as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.sha }}
+          path: results/dataset_test_results.csv
+          retention-days: 30
+
+  # ── Job 3: Docker build — runs only when model-test passes ────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: self-hosted
+    needs: model-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t face-audit:${{ github.sha }} -t face-audit:latest .
+
+      - name: Smoke test the container
+        run: |
+          # start container with model volume
+          docker run -d --name ci-smoke `
+            -p 8099:8000 `
+            -v D:\audit\models:/app/models:ro `
+            face-audit:${{ github.sha }}
+
+          # wait for health check
+          Start-Sleep -Seconds 30
+          $resp = Invoke-WebRequest -Uri http://localhost:8099/health -UseBasicParsing
+          if ($resp.StatusCode -ne 200) { exit 1 }
+          Write-Host "Container health check passed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop ci-smoke 2>$null; docker rm ci-smoke 2>$null
+          Write-Host "Container cleaned up"
