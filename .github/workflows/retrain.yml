@@ -21,23 +21,20 @@ jobs:
 
       - name: Pull latest data from DVC remote
         run: |
+          $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
+          Set-Location D:\audit
           & $py -m dvc pull training/goggles_annotations training/yolo_glasses_dataset
 
-      - name: Run training (logs to MLflow + registers model)
+      - name: Run retrain trigger (drift check → retrain → promote)
         run: |
+          $env:PYTHONUTF8 = "1"
           $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\training\run_train.py
-
-      - name: Run accuracy test on new model
-        run: |
-          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\run_test_fast.py
-
-      - name: Check if model was promoted
-        run: |
-          $py = "D:\Users\ADMIN\anaconda3\envs\face-validation\python.exe"
-          & $py D:\audit\check_promotion.py
+          # --force because this is the weekly scheduled run; always retrain
+          & $py D:\audit\retrain_trigger.py --force
+          $rc = $LASTEXITCODE
+          # exit 0 = promoted, exit 2 = trained but not promoted — both OK for CI
+          if ($rc -ne 0 -and $rc -ne 2) { exit $rc }
 
       - name: Commit updated DVC pointer if model improved
         run: |
