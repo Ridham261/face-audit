@@ -16,7 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# install Python deps first (cached layer — only rebuilds when requirements change)
+# install CPU-only torch first (avoids 2GB CUDA download on Linux)
+RUN pip install --no-cache-dir \
+    torch==2.2.2+cpu torchvision==0.17.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# install remaining deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

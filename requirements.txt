@@ -2,8 +2,8 @@
 # Pinned to exact versions from face-validation conda env
 
 ultralytics==8.4.191
-torch==2.2.2
-torchvision==0.17.2
+# torch and torchvision installed separately in Dockerfile (CPU-only build)
+# for local: pip install torch==2.2.2 torchvision==0.17.2
 onnxruntime==1.32.0
 insightface==2.1
 mediapipe==0.10.21
