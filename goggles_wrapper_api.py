@@ -20,17 +20,45 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(HERE, "models", "goggles_model.pt")
-VALIDATION_URL = "http://localhost:8001/validate"
-GOGGLES_CLASS_ID = 1       # class 0 = specs (OK), class 1 = goggles (reject)
+import mlflow
+from mlflow.tracking import MlflowClient
+from monitoring.prediction_logger import log as _log_prediction
+
+HERE           = os.path.dirname(os.path.abspath(__file__))
+_FALLBACK_PATH = os.path.join(HERE, "models", "goggles_model.pt")
+_MLFLOW_DB     = f"sqlite:///{os.path.join(HERE, 'mlflow.db')}"
+
+VALIDATION_URL       = "http://localhost:8001/validate"
+GOGGLES_CLASS_ID     = 1
 GOGGLES_CONF_THRESHOLD = 0.50
 
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Goggles model not found: {MODEL_PATH}")
 
-print(f"Loading goggles model from: {MODEL_PATH}")
-goggles_model = YOLO(MODEL_PATH)
+def _load_goggles_model() -> YOLO:
+    """Load GogglesDetector@production from MLflow registry; fall back to local file."""
+    mlflow.set_tracking_uri(_MLFLOW_DB)
+    try:
+        client   = MlflowClient(tracking_uri=_MLFLOW_DB)
+        alias_mv = client.get_model_version_by_alias("GogglesDetector", "production")
+        uri      = mlflow.artifacts.download_artifacts(
+            f"models:/GogglesDetector@production",
+            tracking_uri=_MLFLOW_DB,
+        )
+        # artifact dir contains the .pt file
+        pt_files = [f for f in os.listdir(uri) if f.endswith(".pt")]
+        if pt_files:
+            model_path = os.path.join(uri, pt_files[0])
+            print(f"Loading GogglesDetector v{alias_mv.version} from MLflow registry")
+            return YOLO(model_path)
+    except Exception as exc:
+        print(f"Registry load failed ({exc}) — falling back to local file")
+
+    if not os.path.exists(_FALLBACK_PATH):
+        raise FileNotFoundError(f"Goggles model not found: {_FALLBACK_PATH}")
+    print(f"Loading goggles model from local file: {_FALLBACK_PATH}")
+    return YOLO(_FALLBACK_PATH)
+
+
+goggles_model = _load_goggles_model()
 print("Goggles model loaded OK")
 
 app = FastAPI(title="Goggles Wrapper API", version="1.0")
@@ -60,6 +88,7 @@ async def validate_face(file: UploadFile = File(...)):
     goggles_conf = _check_goggles(bgr)
 
     if goggles_conf >= GOGGLES_CONF_THRESHOLD:
+        _log_prediction("rejected", "goggles", False, 0.0)
         return JSONResponse(content={
             "status": "rejected",
             "is_valid": 0,
@@ -109,6 +138,14 @@ async def validate_face(file: UploadFile = File(...)):
         "confidence": round(goggles_conf, 4),
         "model": "custom_yolo_goggles_v1"
     }
+    _log_prediction(
+        status=result.get("status", ""),
+        result_code=(result.get("result") or {}).get("code", ""),
+        is_valid=result.get("is_valid", False),
+        processing_ms=result.get("processing_ms", 0.0),
+        appearance_label=(result.get("appearance") or {}).get("label", ""),
+        gender=(result.get("face") or {}).get("gender", ""),
+    )
     return JSONResponse(content=result)
 
 
