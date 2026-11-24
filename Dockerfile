@@ -29,6 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY goggles_wrapper_api.py .
 COPY fake_albumentations.py .
+COPY monitoring/ ./monitoring/
 
 EXPOSE 8000
 
