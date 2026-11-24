@@ -153,7 +153,7 @@ def main():
         os.system(f"{sys.executable} -m pip install aiohttp -q")
         import aiohttp
 
-    url = f"http://127.0.0.1:{args.port}/validate-face"
+    url = f"http://127.0.0.1:{args.port}/validate"
 
     # Quick connectivity check
     import urllib.request

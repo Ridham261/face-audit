@@ -127,7 +127,7 @@ async def validate_face(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=503,
             detail="Face validation server on port 8001 is not running. "
-                   "Start it first: conda activate faceswapih && "
+                   "Start it first: conda activate face-validation && "
                    "python D:\\audit\\validation_server_310.py"
         )
     except Exception as e:
