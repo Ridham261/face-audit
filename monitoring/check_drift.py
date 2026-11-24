@@ -75,7 +75,10 @@ def check(window: int = 200, log_mlflow: bool = False):
             flag = "  ⚠ DROP"
         if not higher_is_good and delta > 0 and abs(delta) > 0.05:
             flag = "  ⚠ SPIKE"
-        print(f"  {label:<26} {current:{fmt}:>8}  {baseline:{fmt}:>8}  {delta:+{fmt}:>8}{flag}")
+        c = format(current, fmt).rjust(8)
+        b = format(baseline, fmt).rjust(8)
+        d = ("+" if delta >= 0 else "") + format(delta, fmt)
+        print(f"  {label:<26} {c}  {b}  {d.rjust(8)}{flag}")
 
     _row("Acceptance rate",  acc_rate, BASELINE["acceptance_rate"])
     _row("Rejection rate",   rej_rate, BASELINE["rejection_rate"],  higher_is_good=False)
