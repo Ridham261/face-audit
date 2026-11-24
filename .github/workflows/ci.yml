@@ -83,16 +83,27 @@ jobs:
 
       - name: Smoke test the container
         run: |
-          # start container with model volume
           docker run -d --name ci-smoke `
             -p 8099:8000 `
             -v D:\audit\models:/app/models:ro `
             face-audit:${{ github.sha }}
 
-          # wait for health check
-          Start-Sleep -Seconds 30
-          $resp = Invoke-WebRequest -Uri http://localhost:8099/health -UseBasicParsing
-          if ($resp.StatusCode -ne 200) { exit 1 }
+          # poll up to 120 s (12 x 10 s); model load takes ~60 s on first start
+          $ok = $false
+          for ($i = 1; $i -le 12; $i++) {
+            Start-Sleep -Seconds 10
+            try {
+              $r = Invoke-WebRequest -Uri http://localhost:8099/health `
+                     -UseBasicParsing -ErrorAction Stop
+              if ($r.StatusCode -eq 200) { $ok = $true; break }
+            } catch {}
+            Write-Host "  waiting… attempt $i/12"
+          }
+          if (-not $ok) {
+            Write-Host "=== container logs ==="
+            docker logs ci-smoke
+            exit 1
+          }
           Write-Host "Container health check passed"
 
       - name: Cleanup
